@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import "../Login/Login.css";
+import "./Register.css";
 import { register } from "../../api/auth";
 import { registerShop } from "../../api/shop";
 
@@ -168,90 +168,47 @@ const Register = () => {
                 ) : (
                     <>
                         <h2 className="login-title">Đăng Ký Shop</h2>
-                        <form className="login-form" onSubmit={handleShopSubmit} autoComplete="off">
-                            <label htmlFor="name">Tên shop</label>
-                            <input
-                                id="name"
-                                name="name"
-                                type="text"
-                                placeholder="Nhập tên shop"
-                                value={shopForm.name}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="address">Địa chỉ</label>
-                            <input
-                                id="address"
-                                name="address"
-                                type="text"
-                                placeholder="Nhập địa chỉ"
-                                value={shopForm.address}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="phone">Số điện thoại</label>
-                            <input
-                                id="phone"
-                                name="phone"
-                                type="text"
-                                placeholder="Nhập số điện thoại"
-                                value={shopForm.phone}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="email">Email</label>
-                            <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="Nhập email"
-                                value={shopForm.email}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="city">Thành phố</label>
-                            <input
-                                id="city"
-                                name="city"
-                                type="text"
-                                placeholder="Thành phố"
-                                value={shopForm.city}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="province">Tỉnh</label>
-                            <input
-                                id="province"
-                                name="province"
-                                type="text"
-                                placeholder="Tỉnh"
-                                value={shopForm.province}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="logoUrl">Logo (URL)</label>
-                            <input
-                                id="logoUrl"
-                                name="logoUrl"
-                                type="text"
-                                placeholder="URL logo"
-                                value={shopForm.logoUrl}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="coverImageUrl">Ảnh bìa (URL)</label>
-                            <input
-                                id="coverImageUrl"
-                                name="coverImageUrl"
-                                type="text"
-                                placeholder="URL ảnh bìa"
-                                value={shopForm.coverImageUrl}
-                                onChange={handleShopChange}
-                            />
-                            <label htmlFor="qrBanking">QR Banking (URL)</label>
-                            <input
-                                id="qrBanking"
-                                name="qrBanking"
-                                type="text"
-                                placeholder="URL QR Banking"
-                                value={shopForm.qrBanking}
-                                onChange={handleShopChange}
-                            />
+                        <form className="register-form" onSubmit={handleShopSubmit} autoComplete="off">
+                            <div className="row">
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="name">Tên shop</label>
+                                    <input id="name" name="name" type="text" placeholder="Nhập tên shop" value={shopForm.name} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="address">Địa chỉ</label>
+                                    <input id="address" name="address" type="text" placeholder="Nhập địa chỉ" value={shopForm.address} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="phone">Số điện thoại</label>
+                                    <input id="phone" name="phone" type="text" placeholder="Nhập số điện thoại" value={shopForm.phone} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="email">Email</label>
+                                    <input id="email" name="email" type="email" placeholder="Nhập email" value={shopForm.email} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="city">Thành phố</label>
+                                    <input id="city" name="city" type="text" placeholder="Thành phố" value={shopForm.city} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="province">Tỉnh</label>
+                                    <input id="province" name="province" type="text" placeholder="Tỉnh" value={shopForm.province} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="logoUrl">Logo (URL)</label>
+                                    <input id="logoUrl" name="logoUrl" type="text" placeholder="URL logo" value={shopForm.logoUrl} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-6 mb-2">
+                                    <label htmlFor="coverImageUrl">Ảnh bìa (URL)</label>
+                                    <input id="coverImageUrl" name="coverImageUrl" type="text" placeholder="URL ảnh bìa" value={shopForm.coverImageUrl} onChange={handleShopChange} />
+                                </div>
+                                <div className="col-md-12 mb-2">
+                                    <label htmlFor="qrBanking">QR Banking (URL)</label>
+                                    <input id="qrBanking" name="qrBanking" type="text" placeholder="URL QR Banking" value={shopForm.qrBanking} onChange={handleShopChange} />
+                                </div>
+                            </div>
                             {error && <div style={{ color: "#e74c3c", marginBottom: 8, fontSize: 14 }}>{error}</div>}
-                            <button className="login-btn" type="submit" disabled={loading}>
+                            <button className="register-btn" type="submit" disabled={loading}>
                                 {loading ? "Đang đăng ký shop..." : "Đăng Ký Shop"}
                             </button>
                         </form>

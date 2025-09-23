@@ -30,6 +30,7 @@ const ShopProducts = () => {
                 } else {
                     setError(res.message || "Lỗi khi tải sản phẩm");
                 }
+                // eslint-disable-next-line no-unused-vars
             } catch (err) {
                 setError("Không thể tải sản phẩm");
             }
@@ -49,6 +50,7 @@ const ShopProducts = () => {
             } else {
                 setError(res.message || "Không thể tải lại danh sách sản phẩm");
             }
+            // eslint-disable-next-line no-unused-vars
         } catch (err) {
             setError("Không thể tải lại danh sách sản phẩm");
         }

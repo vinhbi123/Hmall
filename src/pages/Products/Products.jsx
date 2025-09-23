@@ -74,9 +74,9 @@ const Products = () => {
 
     // Xử lý nút "Xem Thêm Sản Phẩm"
     const handleLoadMore = () => {
-        setPageSize(12); // Chuyển sang 12 sản phẩm mỗi trang
-        setPageNumber(1); // Reset về trang 1
-        setShowLoadMore(false); // Ẩn nút "Xem Thêm" sau khi nhấn
+        setPageSize(12);
+        setPageNumber(1);
+        setShowLoadMore(false);
     };
 
     // Tính tổng số trang

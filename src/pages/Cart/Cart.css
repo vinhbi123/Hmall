@@ -134,7 +134,3 @@
 .cart-remove-btn-ui svg path {
   stroke: #df394c !important; /* Đổi icon thùng rác thành màu đỏ */
 }
-.cart-remove-btn-ui:hover {
-  background: #df394c;
-  border-radius: 50%;
-}

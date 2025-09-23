@@ -49,6 +49,7 @@ const AppContent = () => {
   const location = useLocation();
   const isLogin = location.pathname === "/login";
   const isRegister = location.pathname === "/register";
+  const isProfile = location.pathname === "/settings";
   const role = getRole();
 
   // Nếu là Shop, dùng ShopLayout với các route
@@ -129,8 +130,9 @@ const AppContent = () => {
         </Routes>
       </main>
       {/* Không hiện Footer và ScrollToTop khi ở trang login hoặc register */}
-      {!isLogin && !isRegister && <Footer />}
+      {!isLogin && !isRegister && !isProfile && <Footer />}
       {!isLogin && !isRegister && <ScrollToTop />}
+
     </div>
   );
 };
