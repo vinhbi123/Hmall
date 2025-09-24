@@ -22,6 +22,10 @@ import Cart from "./pages/Cart/Cart";
 import Profile from "./pages/Profile/Profile";
 import ShopProducts from "./pages/ProductsShop/ShopProducts";
 import Register from "./pages/Register/Register";
+import AdminLayout from "./pages/Admin/AdminLayout";
+import DashboardHome from "./pages/Admin/DashboardHome";
+import ProductsManager from "./pages/Admin/ProductsManager";
+import PostsManager from "./pages/Admin/PostsManager";
 
 // Dummy shop pages
 const ShopDashboard = () => <div style={{ padding: 40 }}>Shop Dashboard</div>;
@@ -52,6 +56,19 @@ const AppContent = () => {
   const isProfile = location.pathname === "/settings";
   const role = getRole();
 
+  // Nếu là Admin, dùng AdminLayout với các route
+  if (role === RoleEnum.Admin && location.pathname.startsWith("/admin")) {
+    return (
+      <Routes>
+        {/* <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<DashboardHome />} />
+          <Route path="products" element={<ProductsManager />} />
+          <Route path="posts" element={<PostsManager />} />
+        </Route> */}
+      </Routes>
+    );
+  }
+
   // Nếu là Shop, dùng ShopLayout với các route
   if (role === RoleEnum.Shop && location.pathname.startsWith("/shop")) {
     return (
@@ -70,7 +87,6 @@ const AppContent = () => {
   // Mặc định là User
   return (
     <div className="App">
-      {/* Không hiện Navbar khi ở trang login hoặc register */}
       {!isLogin && !isRegister && <Navbar />}
       <main>
         <Routes>
@@ -127,6 +143,11 @@ const AppContent = () => {
           />
           <Route path="/blog/:id" element={<BlogDetail />} />
           <Route path="/settings" element={<Profile />} />
+          <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<DashboardHome />} />
+          <Route path="products" element={<ProductsManager />} />
+          <Route path="posts" element={<PostsManager />} />
+        </Route>
         </Routes>
       </main>
       {/* Không hiện Footer và ScrollToTop khi ở trang login hoặc register */}
@@ -136,6 +157,7 @@ const AppContent = () => {
     </div>
   );
 };
+
 
 export default function AppWithRouter() {
   return (
