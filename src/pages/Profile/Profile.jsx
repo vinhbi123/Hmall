@@ -3,6 +3,7 @@ import { Container, Row, Col, Card, Button, Form, Alert, Nav, Image, Spinner } f
 import { getUser, editProfile } from "../../api/auth";
 import { uploadMultipleFilesUser } from "../../api/upload";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import "./Profile.css";
 
 const BASE_API_URL = "https://hmstoresapi.eposh.io.vn/";
 
@@ -35,14 +36,13 @@ const Profile = () => {
         fetchUser();
     }, [token]);
 
-    // Xử lý upload avatar
     const handleAvatarChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         setAvatarUploading(true);
         try {
             const res = await uploadMultipleFilesUser(
-                { files: [file], customeFolder: "avatars" }, // Adjusted to match API param (customeFolder instead of folder/ImageUser)
+                { files: [file], customeFolder: "avatars" },
                 token
             );
             const relativePath = res?.files?.[0];
@@ -54,17 +54,14 @@ const Profile = () => {
                     setUser((prev) => ({ ...prev, avatar: imgUrl }));
                 }
             }
-            // eslint-disable-next-line no-unused-vars
-        } catch (err) { /* empty */ }
+        } catch { /* empty */ }
         setAvatarUploading(false);
     };
 
-    // Xử lý thay đổi form thông tin cá nhân
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
-    // Lưu thông tin cá nhân
     const handleSave = async (e) => {
         e.preventDefault();
         try {
@@ -78,7 +75,6 @@ const Profile = () => {
         } catch { /* empty */ }
     };
 
-    // Xử lý đổi mật khẩu
     const handlePwChange = (e) => {
         setPwForm({ ...pwForm, [e.target.name]: e.target.value });
     };
@@ -94,7 +90,6 @@ const Profile = () => {
             setPwError("Mật khẩu mới không khớp.");
             return;
         }
-        // Gọi API đổi mật khẩu ở đây nếu có
         setPwSuccess(true);
         setPwForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
         setTimeout(() => setPwSuccess(false), 2000);
@@ -103,11 +98,11 @@ const Profile = () => {
     if (loading) return <LoadingSpinner />;
 
     return (
-        <Container style={{ paddingTop: 120, minHeight: "100vh" }}>
-            <Row className="justify-content-center">
-                <Col md={3} className="mb-4">
-                    <Card className="shadow-sm">
-                        <Card.Body className="text-center">
+        <div className="profile-bg">
+            <div className="profile-container">
+                <Row>
+                    <Col md={4} className="mb-4">
+                        <div className="profile-card text-center">
                             <div style={{ position: "relative", display: "inline-block" }}>
                                 <Image
                                     src={
@@ -116,9 +111,7 @@ const Profile = () => {
                                             : "https://ui-avatars.com/api/?name=" + encodeURIComponent(form.fullName || form.userName || "User")
                                     }
                                     roundedCircle
-                                    width={120}
-                                    height={120}
-                                    style={{ objectFit: "cover", border: "2px solid #eee" }}
+                                    className="profile-avatar"
                                     alt="avatar"
                                 />
                                 <Button
@@ -145,99 +138,116 @@ const Profile = () => {
                                     disabled={avatarUploading}
                                 />
                             </div>
-                            <div className="mt-2 fw-bold">{form.fullName || form.userName}</div>
-                        </Card.Body>
-                    </Card>
-                    <Card className="shadow-sm mt-3">
-                        <Card.Body>
-                            <Nav variant="pills" className="flex-column">
+                            <div className="profile-info mt-2">{form.fullName || form.userName}</div>
+                            <div className="text-muted mb-2">{form.email}</div>
+
+                        </div>
+                    </Col>
+                    <Col md={8}>
+                        <div className="profile-section">
+                            <Nav variant="tabs" className="profile-tab mb-4">
                                 <Nav.Item>
-                                    <Nav.Link active={tab === "info"} onClick={() => setTab("info")}>
-                                        Thông tin cá nhân
+                                    <Nav.Link
+                                        active={tab === "info"}
+                                        onClick={() => setTab("info")}
+                                        className="profile-tab-link"
+                                    >
+                                        Cài đặt tài khoản
                                     </Nav.Link>
                                 </Nav.Item>
                                 <Nav.Item>
-                                    <Nav.Link active={tab === "password"} onClick={() => setTab("password")}>
+                                    <Nav.Link
+                                        active={tab === "password"}
+                                        onClick={() => setTab("password")}
+                                        className="profile-tab-link"
+                                    >
                                         Đổi mật khẩu
                                     </Nav.Link>
                                 </Nav.Item>
                             </Nav>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={9}>
-                    <Card className="shadow">
-                        <Card.Body>
                             {tab === "info" && (
                                 <>
-                                    <h3 className="mb-4 text-center">Thông tin cá nhân</h3>
                                     {success && <Alert variant="success">Cập nhật thành công!</Alert>}
-                                    <Form onSubmit={handleSave}>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Tên đăng nhập</Form.Label>
-                                            <Form.Control
-                                                type="text"
-                                                value={form.userName || ""}
-                                                name="userName"
-                                                disabled
-                                            />
-                                        </Form.Group>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Họ tên</Form.Label>
-                                            <Form.Control
-                                                type="text"
-                                                value={form.fullName || ""}
-                                                name="fullName"
-                                                onChange={handleChange}
-                                                disabled={!editMode}
-                                            />
-                                        </Form.Group>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Email</Form.Label>
-                                            <Form.Control
-                                                type="email"
-                                                value={form.email || ""}
-                                                name="email"
-                                                onChange={handleChange}
-                                                disabled={!editMode}
-                                            />
-                                        </Form.Group>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Số điện thoại</Form.Label>
-                                            <Form.Control
-                                                type="text"
-                                                value={form.phoneNumber || ""}
-                                                name="phoneNumber"
-                                                onChange={handleChange}
-                                                disabled={!editMode}
-                                            />
-                                        </Form.Group>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Địa chỉ</Form.Label>
-                                            <Form.Control
-                                                type="text"
-                                                value={form.address || ""}
-                                                name="address"
-                                                onChange={handleChange}
-                                                disabled={!editMode}
-                                            />
-                                        </Form.Group>
-                                        <Form.Group className="mb-3">
-                                            <Form.Label>Giới tính</Form.Label>
-                                            <Form.Control
-                                                type="text"
-                                                value={form.gender || ""}
-                                                name="gender"
-                                                onChange={handleChange}
-                                                disabled={!editMode}
-                                            />
-                                        </Form.Group>
+                                    <Form className="profile-form" onSubmit={handleSave}>
+                                        <Row>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Họ tên</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        value={form.fullName || ""}
+                                                        name="fullName"
+                                                        onChange={handleChange}
+                                                        disabled={!editMode}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Số điện thoại</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        value={form.phoneNumber || ""}
+                                                        name="phoneNumber"
+                                                        onChange={handleChange}
+                                                        disabled={!editMode}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Email</Form.Label>
+                                                    <Form.Control
+                                                        type="email"
+                                                        value={form.email || ""}
+                                                        name="email"
+                                                        onChange={handleChange}
+                                                        disabled={!editMode}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Địa chỉ</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        value={form.address || ""}
+                                                        name="address"
+                                                        onChange={handleChange}
+                                                        disabled={!editMode}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Giới tính</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        value={form.gender || ""}
+                                                        name="gender"
+                                                        onChange={handleChange}
+                                                        disabled={!editMode}
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                            <Col md={6}>
+                                                <Form.Group className="mb-3">
+                                                    <Form.Label>Tên đăng nhập</Form.Label>
+                                                    <Form.Control
+                                                        type="text"
+                                                        value={form.userName || ""}
+                                                        name="userName"
+                                                        disabled
+                                                    />
+                                                </Form.Group>
+                                            </Col>
+                                        </Row>
                                         {editMode ? (
                                             <div className="d-flex gap-2">
-                                                <Button type="submit" variant="primary">
+                                                <Button type="submit" variant="outline-primary">
                                                     Lưu thay đổi
                                                 </Button>
-                                                <Button variant="secondary" onClick={() => { setEditMode(false); setForm(user); }}>
+                                                <Button variant="outline-primary" onClick={() => { setEditMode(false); setForm(user); }}>
                                                     Hủy
                                                 </Button>
                                             </div>
@@ -251,10 +261,9 @@ const Profile = () => {
                             )}
                             {tab === "password" && (
                                 <>
-                                    <h3 className="mb-4 text-center">Đổi mật khẩu</h3>
                                     {pwSuccess && <Alert variant="success">Đổi mật khẩu thành công!</Alert>}
                                     {pwError && <Alert variant="danger">{pwError}</Alert>}
-                                    <Form onSubmit={handlePwSubmit}>
+                                    <Form className="profile-form" onSubmit={handlePwSubmit}>
                                         <Form.Group className="mb-3">
                                             <Form.Label>Mật khẩu cũ</Form.Label>
                                             <Form.Control
@@ -282,17 +291,17 @@ const Profile = () => {
                                                 onChange={handlePwChange}
                                             />
                                         </Form.Group>
-                                        <Button type="submit" variant="primary">
+                                        <Button type="submit" className="profile-btn">
                                             Đổi mật khẩu
                                         </Button>
                                     </Form>
                                 </>
                             )}
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
+                        </div>
+                    </Col>
+                </Row>
+            </div>
+        </div>
     );
 };
 

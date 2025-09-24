@@ -21,6 +21,7 @@ const Products = () => {
     const [showLoadMore, setShowLoadMore] = useState(true); // Hiển thị nút "Xem Thêm" ban đầu
 
     // Lấy sản phẩm từ API
+    // ...existing code...
     useEffect(() => {
         const fetchProducts = async () => {
             setLoading(true);
@@ -32,13 +33,13 @@ const Products = () => {
                     pageNumber,
                     pageSize,
                 });
-                setProducts(res?.data?.items || []);
-                // Sử dụng totalRecord thay vì totalItems
-                setTotalItems(res?.data?.totalRecord ?? res?.data?.items?.length ?? 0);
-                console.log("Total Items (totalRecord):", res?.data?.totalRecord, "Fetched Items:", res?.data?.items?.length, "Page Size:", pageSize, "API Page Size:", res?.data?.pageSize);
+                // Lọc chỉ sản phẩm isActive
+                const activeProducts = (res?.data?.items || []).filter(p => p.isActive);
+                setProducts(activeProducts);
+                setTotalItems(activeProducts.length);
+                // eslint-disable-next-line no-unused-vars
             } catch (error) {
                 setError("Không thể tải sản phẩm. Vui lòng thử lại.");
-                console.error("API Error:", error);
             } finally {
                 setLoading(false);
             }
@@ -46,7 +47,7 @@ const Products = () => {
 
         fetchProducts();
     }, [pageNumber, pageSize, selectedCategory, searchTerm]);
-
+    // ...existing code...
     // Tạo danh sách danh mục từ sản phẩm
     const categories = useMemo(() => {
         const set = new Set(products.map((p) => p.category).filter(Boolean));
@@ -74,9 +75,9 @@ const Products = () => {
 
     // Xử lý nút "Xem Thêm Sản Phẩm"
     const handleLoadMore = () => {
-        setPageSize(12); // Chuyển sang 12 sản phẩm mỗi trang
-        setPageNumber(1); // Reset về trang 1
-        setShowLoadMore(false); // Ẩn nút "Xem Thêm" sau khi nhấn
+        setPageSize(12);
+        setPageNumber(1);
+        setShowLoadMore(false);
     };
 
     // Tính tổng số trang

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getProductsByShop } from "../../api/product";
-import { Table, Container, Button, Spinner, Alert, Pagination, Toast } from "react-bootstrap";
+import { getProductsByShop, deleteProduct, updateProduct } from "../../api/product";
+import { Table, Container, Button, Spinner, Alert, Pagination, Toast, Modal, Form, Row, Col } from "react-bootstrap";
 import AddProducts from "../../components/AddProducts";
 
 const BASE_API_URL = "https://hmstoresapi.eposh.io.vn/";
@@ -13,7 +13,13 @@ const ShopProducts = () => {
     const [pageSize] = useState(10);
     const [totalPages, setTotalPages] = useState(1);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [showToast, setShowToast] = useState(false);
+    const [toastMsg, setToastMsg] = useState("");
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [editForm, setEditForm] = useState({});
+    const [editLoading, setEditLoading] = useState(false);
+    const [deleteLoadingId, setDeleteLoadingId] = useState(null);
 
     const token = localStorage.getItem("token");
     const shopId = localStorage.getItem("shopId");
@@ -25,7 +31,9 @@ const ShopProducts = () => {
             try {
                 const res = await getProductsByShop({ pageNumber, pageSize, shopId }, token);
                 if (res.statusCode === 200) {
-                    setProducts(res.data.items || []);
+                    // Chỉ lấy sản phẩm isActive
+                    const activeProducts = (res.data.items || []);
+                    setProducts(activeProducts);
                     setTotalPages(res.data.totalPages || 1);
                 } else {
                     setError(res.message || "Lỗi khi tải sản phẩm");
@@ -43,8 +51,9 @@ const ShopProducts = () => {
         setLoading(true);
         try {
             const res = await getProductsByShop({ pageNumber: 1, pageSize, shopId }, token);
-            if (res.statusCode === 200) { // Changed from 201 to 200
-                setProducts(res.data.items || []);
+            if (res.statusCode === 200) {
+                const activeProducts = (res.data.items || []).filter(p => p.isActive);
+                setProducts(activeProducts);
                 setTotalPages(res.data.totalPages || 1);
             } else {
                 setError(res.message || "Không thể tải lại danh sách sản phẩm");
@@ -53,8 +62,96 @@ const ShopProducts = () => {
             setError("Không thể tải lại danh sách sản phẩm");
         }
         setLoading(false);
-        setShowAddModal(false); // Close modal
-        setShowToast(true); // Show toast
+        setShowAddModal(false);
+        setToastMsg("Tạo sản phẩm thành công!");
+        setShowToast(true);
+    };
+
+    // Xử lý xóa sản phẩm
+    const handleDeleteProduct = async (productId) => {
+        if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
+        setDeleteLoadingId(productId);
+        try {
+            const res = await deleteProduct(productId, token);
+            if (res.statusCode === 200) {
+                setProducts(products.filter((p) => p.id !== productId));
+                setToastMsg("Xóa sản phẩm thành công!");
+                setShowToast(true);
+            } else {
+                setToastMsg(res.message || "Xóa sản phẩm thất bại!");
+                setShowToast(true);
+            }
+        } catch {
+            setToastMsg("Xóa sản phẩm thất bại!");
+            setShowToast(true);
+        }
+        setDeleteLoadingId(null);
+    };
+
+    // Xử lý mở modal sửa
+    const handleShowEditModal = (product) => {
+        setSelectedProduct(product);
+        setEditForm({
+            name: product.name || "",
+            description: product.description || "",
+            costPrice: product.costPrice || "",
+            price: product.price || "",
+            stock: product.stock || "",
+            material: product.material || "",
+            category: product.category || "",
+            commonImage: product.commonImage || "",
+        });
+        setShowEditModal(true);
+    };
+
+    // Xử lý upload ảnh khi sửa
+    const handleEditImageChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setEditLoading(true);
+        try {
+            const { uploadMultipleFiles } = await import("../../api/upload");
+            const res = await uploadMultipleFiles({ files: [file], customeFolder: "products" }, token);
+            const relativePath = res?.files?.[0];
+            if (relativePath) {
+                const imgUrl = `${BASE_API_URL}${relativePath}`;
+                setEditForm((prev) => ({ ...prev, commonImage: imgUrl }));
+            }
+        } catch {
+            setToastMsg("Tải ảnh thất bại!");
+            setShowToast(true);
+        }
+        setEditLoading(false);
+    };
+
+    // Xử lý thay đổi form sửa
+    const handleEditChange = (e) => {
+        setEditForm({ ...editForm, [e.target.name]: e.target.value });
+    };
+
+    // Xử lý lưu sửa sản phẩm
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        setEditLoading(true);
+        try {
+            const res = await updateProduct(selectedProduct.id, editForm, token);
+            if (res.statusCode === 200 || res.statusCode === 201) {
+                setShowEditModal(false);
+                setToastMsg("Cập nhật sản phẩm thành công!");
+                setShowToast(true);
+                // reload lại danh sách
+                const reload = await getProductsByShop({ pageNumber, pageSize, shopId }, token);
+                const activeProducts = (reload.data.items || []).filter(p => p.isActive);
+                setProducts(activeProducts);
+            } else {
+                setToastMsg(res.message || "Cập nhật sản phẩm thất bại!");
+                setShowToast(true);
+            }
+        } catch {
+            setToastMsg("Cập nhật sản phẩm thất bại!");
+            setShowToast(true);
+        }
+        setEditLoading(false);
     };
 
     const renderPagination = () => {
@@ -108,12 +205,13 @@ const ShopProducts = () => {
                                 <th>Giá</th>
                                 <th>Trạng thái</th>
                                 <th>Ngày tạo</th>
+                                <th>Hành động</th>
                             </tr>
                         </thead>
                         <tbody>
                             {products.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center text-muted">
+                                    <td colSpan={7} className="text-center text-muted">
                                         Không có sản phẩm nào
                                     </td>
                                 </tr>
@@ -144,6 +242,26 @@ const ShopProducts = () => {
                                             )}
                                         </td>
                                         <td>{new Date(p.createdDate).toLocaleDateString("vi-VN")}</td>
+                                        <td>
+                                            <Button
+                                                variant="warning"
+                                                size="sm"
+                                                className="me-2"
+                                                onClick={() => handleShowEditModal(p)}
+                                            >
+                                                Sửa
+                                            </Button>
+                                            {p.isActive && (
+                                                <Button
+                                                    variant="danger"
+                                                    size="sm"
+                                                    onClick={() => handleDeleteProduct(p.id)}
+                                                    disabled={deleteLoadingId === p.id}
+                                                >
+                                                    {deleteLoadingId === p.id ? <Spinner size="sm" /> : "Xóa"}
+                                                </Button>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))
                             )}
@@ -160,6 +278,132 @@ const ShopProducts = () => {
                 token={token}
             />
 
+            {/* Modal sửa sản phẩm */}
+            <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>Sửa sản phẩm</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form onSubmit={handleEditSubmit}>
+                        <Row>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Tên sản phẩm</Form.Label>
+                                    <Form.Control
+                                        name="name"
+                                        value={editForm.name}
+                                        onChange={handleEditChange}
+                                        required
+                                        size="sm"
+                                    />
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Mô tả</Form.Label>
+                                    <Form.Control
+                                        name="description"
+                                        value={editForm.description}
+                                        onChange={handleEditChange}
+                                        as="textarea"
+                                        rows={3}
+                                        size="sm"
+                                    />
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Danh mục</Form.Label>
+                                    <Form.Control
+                                        name="category"
+                                        value={editForm.category}
+                                        onChange={handleEditChange}
+                                        size="sm"
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Giá vốn</Form.Label>
+                                    <Form.Control
+                                        name="costPrice"
+                                        value={editForm.costPrice}
+                                        onChange={handleEditChange}
+                                        type="number"
+                                        required
+                                        size="sm"
+                                    />
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Giá bán</Form.Label>
+                                    <Form.Control
+                                        name="price"
+                                        value={editForm.price}
+                                        onChange={handleEditChange}
+                                        type="number"
+                                        required
+                                        size="sm"
+                                    />
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Số lượng</Form.Label>
+                                    <Form.Control
+                                        name="stock"
+                                        value={editForm.stock}
+                                        onChange={handleEditChange}
+                                        type="number"
+                                        required
+                                        size="sm"
+                                    />
+                                </Form.Group>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Chất liệu</Form.Label>
+                                    <Form.Control
+                                        name="material"
+                                        value={editForm.material}
+                                        onChange={handleEditChange}
+                                        size="sm"
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Ảnh chính</Form.Label>
+                            <Form.Control
+                                type="file"
+                                accept="image/*"
+                                onChange={handleEditImageChange}
+                                disabled={editLoading}
+                                size="sm"
+                            />
+                            {editForm.commonImage && (
+                                <div className="mt-2">
+                                    <img
+                                        src={editForm.commonImage}
+                                        alt="Common"
+                                        style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6 }}
+                                    />
+                                </div>
+                            )}
+                        </Form.Group>
+                        <div className="mt-4 text-end">
+                            <Button
+                                variant="secondary"
+                                onClick={() => setShowEditModal(false)}
+                                className="me-2"
+                                disabled={editLoading}
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                disabled={editLoading}
+                            >
+                                {editLoading ? <Spinner size="sm" className="me-2" /> : null}
+                                Lưu thay đổi
+                            </Button>
+                        </div>
+                    </Form>
+                </Modal.Body>
+            </Modal>
+
             <Toast
                 show={showToast}
                 onClose={() => setShowToast(false)}
@@ -175,9 +419,9 @@ const ShopProducts = () => {
                 bg="success"
             >
                 <Toast.Header>
-                    <strong className="me-auto">Thành công</strong>
+                    <strong className="me-auto">Thông báo</strong>
                 </Toast.Header>
-                <Toast.Body className="text-white">Tạo sản phẩm thành công!</Toast.Body>
+                <Toast.Body className="text-white">{toastMsg}</Toast.Body>
             </Toast>
         </Container>
     );

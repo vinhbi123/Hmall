@@ -80,6 +80,15 @@ const Login = () => {
                     </button>
                 </form>
                 <a className="login-link" href="#">Quên mật khẩu?</a>
+                <div className="mt-3 text-center">
+                    <span>Bạn chưa có tài khoản? </span>
+                    <a
+                        href="/register"
+                        style={{ color: "#4f8edc", fontWeight: 500, textDecoration: "underline", cursor: "pointer" }}
+                    >
+                        Đăng ký ngay
+                    </a>
+                </div>
             </div>
         </div>
     );
