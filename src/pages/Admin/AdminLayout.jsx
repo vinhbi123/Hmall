@@ -1,10 +1,16 @@
 import React, { useState } from "react";
-import { Outlet, NavLink } from "react-router-dom";
-import { Container, Row, Col, Navbar } from "react-bootstrap";
-import { House, Box, FileText } from "react-bootstrap-icons";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Container, Navbar } from "react-bootstrap";
+import { House, Box, FileText, BoxArrowRight } from "react-bootstrap-icons";
 
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
 
   return (
     <div className="d-flex" style={{ minHeight: "100vh" }}>
@@ -47,10 +53,28 @@ export default function AdminLayout() {
 
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="btn btn-sm btn-light mt-auto"
+          className="btn btn-sm btn-light mt-auto mb-2"
         >
           {collapsed ? "»" : "«"}
         </button>
+        {collapsed ? (
+          <button
+            onClick={handleLogout}
+            className="btn btn-sm btn-danger d-flex align-items-center justify-content-center"
+            style={{ width: "100%" }}
+            title="Đăng xuất"
+          >
+            <BoxArrowRight size={22} />
+          </button>
+        ) : (
+          <button
+            onClick={handleLogout}
+            className="btn btn-sm btn-danger"
+            style={{ width: "100%" }}
+          >
+            Đăng xuất
+          </button>
+        )}
       </div>
 
       {/* Main content */}
@@ -61,7 +85,7 @@ export default function AdminLayout() {
         </Navbar>
 
         {/* Content */}
-        <Container fluid className="p-4" >
+        <Container fluid className="p-4">
           <Outlet />
         </Container>
       </div>

@@ -1,9 +1,13 @@
+"use client"
+
 import { useEffect, useState, useRef } from "react";
-import { Container, Row, Col, Card, Button, Form, Alert, Nav, Image, Spinner } from "react-bootstrap";
+import { Container, Row, Col, Card, Button, Form, Alert, Nav, Image, Spinner, Table, Pagination } from "react-bootstrap";
 import { getUser, editProfile } from "../../api/auth";
 import { uploadMultipleFilesUser } from "../../api/upload";
+
 import LoadingSpinner from "../../components/LoadingSpinner";
 import "./Profile.css";
+import { getOrdersByUser } from "../../api/oder";
 
 const BASE_API_URL = "https://hmstoresapi.eposh.io.vn/";
 
@@ -19,6 +23,10 @@ const Profile = () => {
     const [pwForm, setPwForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
     const [pwSuccess, setPwSuccess] = useState(false);
     const [pwError, setPwError] = useState("");
+    const [orders, setOrders] = useState([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const fileInputRef = useRef();
 
     useEffect(() => {
@@ -35,6 +43,29 @@ const Profile = () => {
         }
         fetchUser();
     }, [token]);
+
+    useEffect(() => {
+        async function fetchOrders() {
+            if (tab === "orders") {
+                setOrdersLoading(true);
+                try {
+                    const res = await getOrdersByUser({ pageNumber: currentPage, pageSize: 3 }, token);
+                    if (res.statusCode === 200) {
+                        setOrders(res.data.items || []);
+                        setTotalPages(res.data.totalPages || 1);
+                    } else {
+                        setOrders([]);
+                        setTotalPages(1);
+                    }
+                } catch {
+                    setOrders([]);
+                    setTotalPages(1);
+                }
+                setOrdersLoading(false);
+            }
+        }
+        fetchOrders();
+    }, [tab, token, currentPage]);
 
     const handleAvatarChange = async (e) => {
         const file = e.target.files[0];
@@ -95,6 +126,10 @@ const Profile = () => {
         setTimeout(() => setPwSuccess(false), 2000);
     };
 
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+    };
+
     if (loading) return <LoadingSpinner />;
 
     return (
@@ -140,7 +175,6 @@ const Profile = () => {
                             </div>
                             <div className="profile-info mt-2">{form.fullName || form.userName}</div>
                             <div className="text-muted mb-2">{form.email}</div>
-
                         </div>
                     </Col>
                     <Col md={8}>
@@ -164,10 +198,20 @@ const Profile = () => {
                                         Đổi mật khẩu
                                     </Nav.Link>
                                 </Nav.Item>
+                                <Nav.Item>
+                                    <Nav.Link
+                                        active={tab === "orders"}
+                                        onClick={() => setTab("orders")}
+                                        className="profile-tab-link"
+                                    >
+                                        Lịch sử đơn hàng
+                                    </Nav.Link>
+                                </Nav.Item>
                             </Nav>
                             {tab === "info" && (
                                 <>
                                     {success && <Alert variant="success">Cập nhật thành công!</Alert>}
+                                    <h3 className="profile-form-title">Thông tin cá nhân</h3>
                                     <Form className="profile-form" onSubmit={handleSave}>
                                         <Row>
                                             <Col md={6}>
@@ -263,6 +307,7 @@ const Profile = () => {
                                 <>
                                     {pwSuccess && <Alert variant="success">Đổi mật khẩu thành công!</Alert>}
                                     {pwError && <Alert variant="danger">{pwError}</Alert>}
+                                    <h3 className="profile-form-title">Đổi mật khẩu</h3>
                                     <Form className="profile-form" onSubmit={handlePwSubmit}>
                                         <Form.Group className="mb-3">
                                             <Form.Label>Mật khẩu cũ</Form.Label>
@@ -295,6 +340,58 @@ const Profile = () => {
                                             Đổi mật khẩu
                                         </Button>
                                     </Form>
+                                </>
+                            )}
+                            {tab === "orders" && (
+                                <>
+                                    {ordersLoading ? (
+                                        <LoadingSpinner />
+                                    ) : orders.length === 0 ? (
+                                        <p className="text-muted">Chưa có đơn hàng nào.</p>
+                                    ) : (
+                                        <>
+                                            <h3 className="profile-form-title">Lịch sử đơn hàng</h3>
+                                            <Table striped bordered hover responsive className="orders-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Mã đơn hàng</th>
+                                                        <th>Tổng tiền</th>
+                                                        <th>Trạng thái</th>
+                                                        <th>Ngày tạo</th>
+                                                        <th>Địa chỉ giao hàng</th>
+                                                        <th>Người nhận</th>
+                                                        <th>Số điện thoại</th>
+                                                        <th>Phương thức thanh toán</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {orders.map(order => (
+                                                        <tr key={order.orderID}>
+                                                            <td>{order.orderCode}</td>
+                                                            <td>{order.totalAmounts.toLocaleString()}đ</td>
+                                                            <td>{order.status === "WaitForPayment" ? "Chờ thanh toán" : order.status}</td>
+                                                            <td>{new Date(order.createdDate).toLocaleString("vi-VN")}</td>
+                                                            <td>{order.deliveryAddress}</td>
+                                                            <td>{order.receiverName}</td>
+                                                            <td>{order.receiverPhone}</td>
+                                                            <td>{order.paymentMethod === "Direct" ? "Trực tiếp" : "Thanh toán online"}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
+                                            <Pagination className="justify-content-center mt-4">
+                                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                    <Pagination.Item
+                                                        key={page}
+                                                        active={page === currentPage}
+                                                        onClick={() => handlePageChange(page)}
+                                                    >
+                                                        {page}
+                                                    </Pagination.Item>
+                                                ))}
+                                            </Pagination>
+                                        </>
+                                    )}
                                 </>
                             )}
                         </div>

@@ -1,13 +1,25 @@
+"use client"
+
 import React, { useState, useEffect } from "react";
+import { Container, Modal, Form, Button, Toast, ToastContainer } from "react-bootstrap";
 import "./Cart.css";
 import { getCartItems, deleteCartItem, editCartItemQuantity } from "../../api/cart";
-import LoadingSpinner from "../../components/LoadingSpinner"; // Thêm dòng này
-
+import LoadingSpinner from "../../components/LoadingSpinner";
+import { createOrder } from "../../api/oder";
 
 const Cart = () => {
     const [cartItems, setCartItems] = useState([]);
     const [totalAmounts, setTotalAmounts] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+    const [checkoutForm, setCheckoutForm] = useState({
+        receiverName: "",
+        deliveryAddress: "",
+        receiverPhone: "",
+        paymentMethod: "Direct"
+    });
+    const [showToast, setShowToast] = useState(false);
+    const [toastMessage, setToastMessage] = useState("");
     const token = localStorage.getItem("token");
 
     // Lấy giỏ hàng từ API
@@ -42,6 +54,69 @@ const Cart = () => {
         const apiCart = res?.data?.items?.[0];
         setCartItems(apiCart?.cartItems || []);
         setTotalAmounts(apiCart?.totalAmounts || 0);
+    };
+
+    // Xử lý mở modal thanh toán
+    const handleShowCheckoutModal = () => {
+        if (!token) {
+            setToastMessage("Vui lòng đăng nhập để thanh toán!");
+            setShowToast(true);
+            return;
+        }
+        setCheckoutForm({
+            receiverName: "",
+            deliveryAddress: "",
+            receiverPhone: "",
+            paymentMethod: "Direct"
+        });
+        setShowCheckoutModal(true);
+    };
+
+    // Xử lý submit form thanh toán
+    const handleCheckoutSubmit = async () => {
+        const { receiverName, deliveryAddress, receiverPhone, paymentMethod } = checkoutForm;
+        if (!receiverName || !deliveryAddress || !receiverPhone) {
+            setToastMessage("Vui lòng điền đầy đủ thông tin!");
+            setShowToast(true);
+            return;
+        }
+
+        const cartItemIDs = cartItems.map(item => item.cartItemID);
+        const orderData = {
+            receiverName,
+            deliveryAddress,
+            receiverPhone,
+            cartItemIDs,
+            paymentMethod
+        };
+
+        try {
+            const res = await createOrder(orderData, token);
+            if (res && res.statusCode === 200) {
+                setToastMessage("Đặt hàng thành công!");
+                setShowToast(true);
+                setShowCheckoutModal(false);
+                // Hiện toast xong mới reload cart
+                setTimeout(async () => {
+                    const cartRes = await getCartItems({}, token);
+                    const apiCart = cartRes?.data?.items?.[0];
+                    setCartItems(apiCart?.cartItems || []);
+                    setTotalAmounts(apiCart?.totalAmounts || 0);
+                }, 500);
+            } else {
+                setToastMessage(res.message || "Đặt hàng thất bại!");
+                setShowToast(true);
+            }
+        } catch {
+            setToastMessage("Đặt hàng thất bại!");
+            setShowToast(true);
+        }
+    };
+
+    // Xử lý thay đổi form thanh toán
+    const handleFormChange = (e) => {
+        const { name, value } = e.target;
+        setCheckoutForm(prev => ({ ...prev, [name]: value }));
     };
 
     return (
@@ -92,8 +167,83 @@ const Cart = () => {
                         <span>{totalAmounts.toLocaleString()}đ</span>
                     </div>
                 </div>
-                <button className="cart-checkout-btn-ui" disabled={cartItems.length === 0}>THANH TOÁN</button>
+                <button className="cart-checkout-btn-ui" disabled={cartItems.length === 0} onClick={handleShowCheckoutModal}>
+                    THANH TOÁN
+                </button>
             </div>
+
+            {/* Modal thanh toán */}
+            <Modal show={showCheckoutModal} onHide={() => setShowCheckoutModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Thông tin thanh toán</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Tên người nhận</Form.Label>
+                            <Form.Control
+                                type="text"
+                                name="receiverName"
+                                value={checkoutForm.receiverName}
+                                onChange={handleFormChange}
+                                placeholder="Nhập tên người nhận"
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Địa chỉ giao hàng</Form.Label>
+                            <Form.Control
+                                type="text"
+                                name="deliveryAddress"
+                                value={checkoutForm.deliveryAddress}
+                                onChange={handleFormChange}
+                                placeholder="Nhập địa chỉ giao hàng"
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Số điện thoại</Form.Label>
+                            <Form.Control
+                                type="text"
+                                name="receiverPhone"
+                                value={checkoutForm.receiverPhone}
+                                onChange={handleFormChange}
+                                placeholder="Nhập số điện thoại"
+                            />
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Phương thức thanh toán</Form.Label>
+                            <Form.Select
+                                name="paymentMethod"
+                                value={checkoutForm.paymentMethod}
+                                onChange={handleFormChange}
+                            >
+                                <option value="Direct">Trực tiếp</option>
+                                <option value="OnlineBanking">Thanh toán online</option>
+                            </Form.Select>
+                        </Form.Group>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowCheckoutModal(false)}>
+                        Hủy
+                    </Button>
+                    <Button variant="primary" onClick={handleCheckoutSubmit}>
+                        Xác nhận
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Toast thông báo */}
+            <ToastContainer position="top-end" className="p-3">
+                <Toast
+                    onClose={() => setShowToast(false)}
+                    show={showToast}
+                    delay={2000}
+                    autohide
+                    bg={toastMessage.includes("thất bại") || toastMessage.includes("đăng nhập") || toastMessage.includes("điền đầy đủ") ? "danger" : "success"}
+                >
+                    <Toast.Body className="text-white">{toastMessage}</Toast.Body>
+                </Toast>
+            </ToastContainer>
         </div>
     );
 };

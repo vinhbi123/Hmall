@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Table, Button, Modal, Form, Alert, Spinner, Row, Col } from "react-bootstrap";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../../api/product";
 import PaginationSection from "../../components/Admin/PaginationSection";
+import { uploadMultipleFiles } from "../../api/upload";
 
 const ProductsManager = () => {
   const [products, setProducts] = useState([]);
@@ -10,7 +11,20 @@ const ProductsManager = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    costPrice: 0,
+    price: 0,
+    stock: 0,
+    material: "",
+    commonImage: "",
+    category: "",
+    moreImage: [],
+  });
+  const [uploading, setUploading] = useState(false);
+
+  const token = localStorage.getItem("token"); // Thêm dòng này
 
   // pagination
   const [pageNumber, setPageNumber] = useState(1);
@@ -48,7 +62,7 @@ const ProductsManager = () => {
         material: "",
         commonImage: "",
         category: "",
-        moreImage: [{ url: "" }],
+        moreImage: [],
       }
     );
     setShowModal(true);
@@ -57,15 +71,63 @@ const ProductsManager = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingProduct(null);
+    setFormData({
+      name: "",
+      description: "",
+      costPrice: 0,
+      price: 0,
+      stock: 0,
+      material: "",
+      commonImage: "",
+      category: "",
+      moreImage: [],
+    });
+  };
+
+  // Upload ảnh chính
+  const handleUploadCommonImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await uploadMultipleFiles({ files: [file], customeFolder: "products" }, token);
+      const relativePath = res?.files?.[0];
+      if (relativePath) {
+        setFormData(prev => ({
+          ...prev,
+          commonImage: `https://hmstoresapi.eposh.io.vn/${relativePath}`,
+        }));
+      }
+    } catch {
+      setError("Tải ảnh chính thất bại!");
+    }
+    setUploading(false);
+  };
+
+  // Upload nhiều ảnh phụ
+  const handleUploadMoreImages = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const res = await uploadMultipleFiles({ files, customeFolder: "products" }, token);
+      setFormData(prev => ({
+        ...prev,
+        moreImage: res?.files?.map(f => ({ url: `https://hmstoresapi.eposh.io.vn/${f}` })) || [],
+      }));
+    } catch {
+      setError("Tải ảnh phụ thất bại!");
+    }
+    setUploading(false);
   };
 
   // Lưu (create hoặc update)
   const handleSave = async () => {
     try {
       if (editingProduct) {
-        await updateProduct(editingProduct.id, formData, localStorage.getItem("token"));
+        await updateProduct(editingProduct.id, formData, token);
       } else {
-        await createProduct(formData, localStorage.getItem("token"));
+        await createProduct(formData, token);
       }
       fetchProducts();
       handleCloseModal();
@@ -226,10 +288,21 @@ const ProductsManager = () => {
             <Form.Group className="mb-3">
               <Form.Label>Ảnh chính</Form.Label>
               <Form.Control
-                type="text"
-                value={formData.commonImage}
-                onChange={(e) => setFormData({ ...formData, commonImage: e.target.value })}
+                type="file"
+                accept="image/*"
+                onChange={handleUploadCommonImage}
+                disabled={uploading}
+                className="mt-2"
               />
+              {formData.commonImage && (
+                <div className="mt-2">
+                  <img
+                    src={formData.commonImage}
+                    alt="Common"
+                    style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6 }}
+                  />
+                </div>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3">
@@ -242,17 +315,26 @@ const ProductsManager = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Ảnh phụ</Form.Label>
+              <Form.Label>Ảnh phụ (tối đa 5)</Form.Label>
               <Form.Control
-                type="text"
-                value={formData.moreImage?.[0]?.url || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    moreImage: [{ url: e.target.value }],
-                  })
-                }
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleUploadMoreImages}
+                disabled={uploading}
               />
+              {formData.moreImage && formData.moreImage.length > 0 && (
+                <div className="mt-2 d-flex flex-wrap gap-2">
+                  {formData.moreImage.map((img, idx) => (
+                    <img
+                      key={idx}
+                      src={img.url}
+                      alt={`more-${idx}`}
+                      style={{ width: 70, height: 70, objectFit: "cover", borderRadius: 6, border: "1px solid #eee" }}
+                    />
+                  ))}
+                </div>
+              )}
             </Form.Group>
           </Form>
         </Modal.Body>

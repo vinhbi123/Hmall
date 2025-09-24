@@ -60,11 +60,11 @@ const AppContent = () => {
   if (role === RoleEnum.Admin && location.pathname.startsWith("/admin")) {
     return (
       <Routes>
-        {/* <Route path="/admin" element={<AdminLayout />}>
+        <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="products" element={<ProductsManager />} />
           <Route path="posts" element={<PostsManager />} />
-        </Route> */}
+        </Route>
       </Routes>
     );
   }
@@ -144,10 +144,10 @@ const AppContent = () => {
           <Route path="/blog/:id" element={<BlogDetail />} />
           <Route path="/settings" element={<Profile />} />
           <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<DashboardHome />} />
-          <Route path="products" element={<ProductsManager />} />
-          <Route path="posts" element={<PostsManager />} />
-        </Route>
+            <Route index element={<DashboardHome />} />
+            <Route path="products" element={<ProductsManager />} />
+            <Route path="posts" element={<PostsManager />} />
+          </Route>
         </Routes>
       </main>
       {/* Không hiện Footer và ScrollToTop khi ở trang login hoặc register */}

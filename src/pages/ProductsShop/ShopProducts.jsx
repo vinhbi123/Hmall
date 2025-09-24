@@ -5,6 +5,21 @@ import AddProducts from "../../components/AddProducts";
 
 const BASE_API_URL = "https://hmstoresapi.eposh.io.vn/";
 
+// Predefined categories extracted from API data
+const CATEGORIES = [
+    "Đồ decor",
+    "Đồ gia dụng",
+    "Phụ kiện",
+    "Túi xách",
+    "Thời trang",
+    "Thời trang nam",
+    "Gia dụng",
+    "Balo - Túi xách",
+    "Thời trang nữ",
+    "Giày dép",
+    "Điện tử",
+];
+
 const ShopProducts = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -17,12 +32,35 @@ const ShopProducts = () => {
     const [showToast, setShowToast] = useState(false);
     const [toastMsg, setToastMsg] = useState("");
     const [selectedProduct, setSelectedProduct] = useState(null);
-    const [editForm, setEditForm] = useState({});
+    const [editForm, setEditForm] = useState({
+        name: "",
+        description: "",
+        costPrice: "",
+        price: "",
+        stock: "",
+        material: "",
+        category: "",
+        commonImage: "",
+        moreImages: [],
+    });
+    const [editErrors, setEditErrors] = useState({});
     const [editLoading, setEditLoading] = useState(false);
     const [deleteLoadingId, setDeleteLoadingId] = useState(null);
 
     const token = localStorage.getItem("token");
     const shopId = localStorage.getItem("shopId");
+
+    // Validate edit form
+    const validateEditForm = () => {
+        const newErrors = {};
+        if (!editForm.name.trim()) newErrors.name = "Tên sản phẩm là bắt buộc";
+        if (!editForm.costPrice || editForm.costPrice <= 0) newErrors.costPrice = "Giá vốn phải lớn hơn 0";
+        if (!editForm.price || editForm.price <= 0) newErrors.price = "Giá bán phải lớn hơn 0";
+        if (!editForm.stock || editForm.stock < 0) newErrors.stock = "Số lượng không được âm";
+        if (!editForm.category) newErrors.category = "Vui lòng chọn danh mục";
+        setEditErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     useEffect(() => {
         async function fetchProducts() {
@@ -30,14 +68,15 @@ const ShopProducts = () => {
             setError("");
             try {
                 const res = await getProductsByShop({ pageNumber, pageSize, shopId }, token);
+                console.log("API response:", res);
                 if (res.statusCode === 200) {
-                    // Chỉ lấy sản phẩm isActive
-                    const activeProducts = (res.data.items || []);
+                    const activeProducts = (res.data.items || []).filter(p => p.isActive === true);
                     setProducts(activeProducts);
                     setTotalPages(res.data.totalPages || 1);
                 } else {
                     setError(res.message || "Lỗi khi tải sản phẩm");
                 }
+                // eslint-disable-next-line no-unused-vars
             } catch (err) {
                 setError("Không thể tải sản phẩm");
             }
@@ -52,12 +91,13 @@ const ShopProducts = () => {
         try {
             const res = await getProductsByShop({ pageNumber: 1, pageSize, shopId }, token);
             if (res.statusCode === 200) {
-                const activeProducts = (res.data.items || []).filter(p => p.isActive);
+                const activeProducts = (res.data.items || []).filter(p => p.isActive === true);
                 setProducts(activeProducts);
                 setTotalPages(res.data.totalPages || 1);
             } else {
                 setError(res.message || "Không thể tải lại danh sách sản phẩm");
             }
+            // eslint-disable-next-line no-unused-vars
         } catch (err) {
             setError("Không thể tải lại danh sách sản phẩm");
         }
@@ -67,7 +107,6 @@ const ShopProducts = () => {
         setShowToast(true);
     };
 
-    // Xử lý xóa sản phẩm
     const handleDeleteProduct = async (productId) => {
         if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
         setDeleteLoadingId(productId);
@@ -88,7 +127,6 @@ const ShopProducts = () => {
         setDeleteLoadingId(null);
     };
 
-    // Xử lý mở modal sửa
     const handleShowEditModal = (product) => {
         setSelectedProduct(product);
         setEditForm({
@@ -100,11 +138,12 @@ const ShopProducts = () => {
             material: product.material || "",
             category: product.category || "",
             commonImage: product.commonImage || "",
+            moreImages: product.moreImages && product.moreImages.length > 0 ? product.moreImages : [],
         });
+        setEditErrors({});
         setShowEditModal(true);
     };
 
-    // Xử lý upload ảnh khi sửa
     const handleEditImageChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -116,32 +155,75 @@ const ShopProducts = () => {
             if (relativePath) {
                 const imgUrl = `${BASE_API_URL}${relativePath}`;
                 setEditForm((prev) => ({ ...prev, commonImage: imgUrl }));
+            } else {
+                setToastMsg("Tải ảnh chính thất bại: Không nhận được đường dẫn ảnh");
+                setShowToast(true);
             }
         } catch {
-            setToastMsg("Tải ảnh thất bại!");
+            setToastMsg("Tải ảnh chính thất bại!");
             setShowToast(true);
         }
         setEditLoading(false);
     };
 
-    // Xử lý thay đổi form sửa
-    const handleEditChange = (e) => {
-        setEditForm({ ...editForm, [e.target.name]: e.target.value });
-    };
-
-    // Xử lý lưu sửa sản phẩm
-    const handleEditSubmit = async (e) => {
-        e.preventDefault();
+    const handleEditMoreImagesChange = async (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
         setEditLoading(true);
         try {
-            const res = await updateProduct(selectedProduct.id, editForm, token);
+            const { uploadMultipleFiles } = await import("../../api/upload");
+            const res = await uploadMultipleFiles({ files, customeFolder: "products" }, token);
+            const newImageUrls = res?.files?.map(file => ({ url: `${BASE_API_URL}${file}` })) || [];
+            setEditForm((prev) => ({
+                ...prev,
+                moreImages: [...prev.moreImages, ...newImageUrls],
+            }));
+        } catch {
+            setToastMsg("Tải ảnh bổ sung thất bại!");
+            setShowToast(true);
+        }
+        setEditLoading(false);
+    };
+
+    const handleRemoveMoreImage = (index) => {
+        setEditForm((prev) => ({
+            ...prev,
+            moreImages: prev.moreImages.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditForm({ ...editForm, [name]: value });
+        // Real-time validation
+        const newErrors = { ...editErrors };
+        if (name === "name" && value.trim()) delete newErrors.name;
+        if (name === "costPrice" && value > 0) delete newErrors.costPrice;
+        if (name === "price" && value > 0) delete newErrors.price;
+        if (name === "stock" && value >= 0) delete newErrors.stock;
+        if (name === "category" && value) delete newErrors.category;
+        setEditErrors(newErrors);
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!validateEditForm()) return;
+        setEditLoading(true);
+        try {
+            const data = {
+                ...editForm,
+                costPrice: Number(editForm.costPrice),
+                price: Number(editForm.price),
+                stock: Number(editForm.stock),
+                moreImages: editForm.moreImages.filter(img => img.url), // Ensure only valid images are sent
+            };
+            const res = await updateProduct(selectedProduct.id, data, token);
             if (res.statusCode === 200 || res.statusCode === 201) {
                 setShowEditModal(false);
                 setToastMsg("Cập nhật sản phẩm thành công!");
                 setShowToast(true);
-                // reload lại danh sách
                 const reload = await getProductsByShop({ pageNumber, pageSize, shopId }, token);
-                const activeProducts = (reload.data.items || []).filter(p => p.isActive);
+                const activeProducts = (reload.data.items || []).filter(p => p.isActive === true);
                 setProducts(activeProducts);
             } else {
                 setToastMsg(res.message || "Cập nhật sản phẩm thất bại!");
@@ -278,24 +360,36 @@ const ShopProducts = () => {
                 token={token}
             />
 
-            {/* Modal sửa sản phẩm */}
             <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered size="lg">
                 <Modal.Header closeButton>
                     <Modal.Title>Sửa sản phẩm</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <Form onSubmit={handleEditSubmit}>
+                    {Object.keys(editErrors).length > 0 && (
+                        <Alert variant="danger">
+                            {Object.values(editErrors).map((err, idx) => (
+                                <div key={idx}>{err}</div>
+                            ))}
+                        </Alert>
+                    )}
+                    <Form onSubmit={handleEditSubmit} noValidate>
                         <Row>
                             <Col md={6}>
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Tên sản phẩm</Form.Label>
+                                    <Form.Label>Tên sản phẩm <span className="text-danger">*</span></Form.Label>
                                     <Form.Control
                                         name="name"
                                         value={editForm.name}
                                         onChange={handleEditChange}
                                         required
+                                        isInvalid={!!editErrors.name}
                                         size="sm"
+                                        placeholder="Nhập tên sản phẩm"
+                                        aria-describedby="name-error"
                                     />
+                                    <Form.Control.Feedback type="invalid" id="name-error">
+                                        {editErrors.name}
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                                 <Form.Group className="mb-3">
                                     <Form.Label>Mô tả</Form.Label>
@@ -306,51 +400,83 @@ const ShopProducts = () => {
                                         as="textarea"
                                         rows={3}
                                         size="sm"
+                                        placeholder="Nhập mô tả sản phẩm"
                                     />
                                 </Form.Group>
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Danh mục</Form.Label>
-                                    <Form.Control
+                                    <Form.Label>Danh mục <span className="text-danger">*</span></Form.Label>
+                                    <Form.Select
                                         name="category"
                                         value={editForm.category}
                                         onChange={handleEditChange}
+                                        required
+                                        isInvalid={!!editErrors.category}
                                         size="sm"
-                                    />
+                                        aria-describedby="category-error"
+                                    >
+                                        <option value="">Chọn danh mục</option>
+                                        {CATEGORIES.map((category, idx) => (
+                                            <option key={idx} value={category}>
+                                                {category}
+                                            </option>
+                                        ))}
+                                    </Form.Select>
+                                    <Form.Control.Feedback type="invalid" id="category-error">
+                                        {editErrors.category}
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Giá vốn</Form.Label>
+                                    <Form.Label>Giá vốn <span className="text-danger">*</span></Form.Label>
                                     <Form.Control
                                         name="costPrice"
                                         value={editForm.costPrice}
                                         onChange={handleEditChange}
                                         type="number"
                                         required
+                                        isInvalid={!!editErrors.costPrice}
                                         size="sm"
+                                        placeholder="Nhập giá vốn"
+                                        aria-describedby="costPrice-error"
                                     />
+                                    <Form.Control.Feedback type="invalid" id="costPrice-error">
+                                        {editErrors.costPrice}
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Giá bán</Form.Label>
+                                    <Form.Label>Giá bán <span className="text-danger">*</span></Form.Label>
                                     <Form.Control
                                         name="price"
                                         value={editForm.price}
                                         onChange={handleEditChange}
                                         type="number"
                                         required
+                                        isInvalid={!!editErrors.price}
                                         size="sm"
+                                        placeholder="Nhập giá bán"
+                                        aria-describedby="price-error"
                                     />
+                                    <Form.Control.Feedback type="invalid" id="price-error">
+                                        {editErrors.price}
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                                 <Form.Group className="mb-3">
-                                    <Form.Label>Số lượng</Form.Label>
+                                    <Form.Label>Số lượng <span className="text-danger">*</span></Form.Label>
                                     <Form.Control
                                         name="stock"
                                         value={editForm.stock}
                                         onChange={handleEditChange}
                                         type="number"
                                         required
+                                        isInvalid={!!editErrors.stock}
                                         size="sm"
+                                        placeholder="Nhập số lượng"
+                                        aria-describedby="stock-error"
                                     />
+                                    <Form.Control.Feedback type="invalid" id="stock-error">
+                                        {editErrors.stock}
+                                    </Form.Control.Feedback>
                                 </Form.Group>
                                 <Form.Group className="mb-3">
                                     <Form.Label>Chất liệu</Form.Label>
@@ -359,6 +485,7 @@ const ShopProducts = () => {
                                         value={editForm.material}
                                         onChange={handleEditChange}
                                         size="sm"
+                                        placeholder="Nhập chất liệu sản phẩm"
                                     />
                                 </Form.Group>
                             </Col>
@@ -371,14 +498,67 @@ const ShopProducts = () => {
                                 onChange={handleEditImageChange}
                                 disabled={editLoading}
                                 size="sm"
+                                aria-describedby="commonImage-help"
                             />
+                            <Form.Text id="commonImage-help" muted>
+                                Chọn file ảnh (jpg, png, tối đa 5MB)
+                            </Form.Text>
                             {editForm.commonImage && (
-                                <div className="mt-2">
+                                <div className="mt-2 position-relative d-inline-block">
                                     <img
                                         src={editForm.commonImage}
                                         alt="Common"
                                         style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 6 }}
                                     />
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        className="position-absolute top-0 end-0"
+                                        onClick={() => setEditForm({ ...editForm, commonImage: "" })}
+                                        disabled={editLoading}
+                                        aria-label="Xóa ảnh chính"
+                                    >
+                                        X
+                                    </Button>
+                                </div>
+                            )}
+                        </Form.Group>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Ảnh bổ sung (tối đa 5)</Form.Label>
+                            <Form.Control
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleEditMoreImagesChange}
+                                disabled={editLoading}
+                                size="sm"
+                                aria-describedby="moreImages-help"
+                            />
+                            <Form.Text id="moreImages-help" muted>
+                                Chọn nhiều file ảnh (jpg, png, tối đa 5MB mỗi ảnh)
+                            </Form.Text>
+                            {editForm.moreImages && editForm.moreImages.length > 0 && (
+                                <div className="mt-2 d-flex flex-wrap">
+                                    {editForm.moreImages.map((img, idx) => (
+                                        <div key={idx} className="position-relative me-2 mb-2">
+                                            <img
+                                                src={img.url}
+                                                alt={`Additional ${idx}`}
+                                                style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 6 }}
+                                            />
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                className="position-absolute top-0 end-0"
+                                                style={{ borderRadius: "50%", padding: "2px 6px" }}
+                                                onClick={() => handleRemoveMoreImage(idx)}
+                                                disabled={editLoading}
+                                                aria-label={`Xóa ảnh bổ sung ${idx + 1}`}
+                                            >
+                                                X
+                                            </Button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </Form.Group>
@@ -388,13 +568,15 @@ const ShopProducts = () => {
                                 onClick={() => setShowEditModal(false)}
                                 className="me-2"
                                 disabled={editLoading}
+                                aria-label="Hủy"
                             >
                                 Hủy
                             </Button>
                             <Button
                                 type="submit"
                                 variant="primary"
-                                disabled={editLoading}
+                                disabled={editLoading || Object.keys(editErrors).length > 0}
+                                aria-label="Lưu thay đổi"
                             >
                                 {editLoading ? <Spinner size="sm" className="me-2" /> : null}
                                 Lưu thay đổi

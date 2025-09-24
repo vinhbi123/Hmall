@@ -26,6 +26,7 @@ const Products = () => {
         const fetchProducts = async () => {
             setLoading(true);
             setError(null);
+
             try {
                 const res = await getProducts({
                     search: searchTerm,
@@ -33,12 +34,15 @@ const Products = () => {
                     pageNumber,
                     pageSize,
                 });
-                // Lọc chỉ sản phẩm isActive
-                const activeProducts = (res?.data?.items || []).filter(p => p.isActive);
-                setProducts(activeProducts);
-                setTotalItems(activeProducts.length);
-                // eslint-disable-next-line no-unused-vars
+
+                console.log("API response:", res);
+
+                const data = res?.data?.items || [];
+                setProducts(data);
+                setTotalItems(res?.data?.totalRecord || data.length);
+
             } catch (error) {
+                console.error(error);
                 setError("Không thể tải sản phẩm. Vui lòng thử lại.");
             } finally {
                 setLoading(false);
@@ -263,7 +267,7 @@ const Products = () => {
                                             <div className="position-relative">
                                                 <Card.Img
                                                     variant="top"
-                                                    src={product.commonImage}
+                                                    src={product.commonImage || "public/images/gallery-1.jpg"}
                                                     className="product-image"
                                                     style={{ objectFit: "cover" }}
                                                 />

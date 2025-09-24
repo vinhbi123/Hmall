@@ -32,7 +32,9 @@ const Login = () => {
                 localStorage.setItem("role", res.data.role); // Lưu role từ API
                 localStorage.setItem("username", res.data.username); // Lưu username
                 // Điều hướng dựa trên vai trò
-                if (res.data.role === "Shop") {
+                if (res.data.role === "Admin") {
+                    navigate("/admin");
+                } else if (res.data.role === "Shop") {
                     navigate("/shop/dashboard");
                 } else {
                     navigate("/");

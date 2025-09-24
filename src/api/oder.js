@@ -14,9 +14,17 @@ export async function createOrder(data, token) {
     return await res.json();
 }
 
-// Lấy danh sách đơn hàng
-export async function getOrders(token) {
-    const res = await fetch(`${BASE_URL}/api/v1/orders`, {
+// ...existing code...
+
+// Lấy danh sách đơn hàng của user
+export async function getOrdersByUser({ pageNumber = 1, pageSize = 10, filter = "" }, token) {
+    const params = new URLSearchParams({
+        pageNumber,
+        pageSize,
+    });
+    if (filter) params.append("filter", filter);
+
+    const res = await fetch(`${BASE_URL}/api/v1/orders/get-by-user?${params.toString()}`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`,
@@ -26,24 +34,34 @@ export async function getOrders(token) {
     return await res.json();
 }
 
-// Cập nhật trạng thái đơn hàng
-export async function updateOrderStatus(orderId, status, token) {
-    const res = await fetch(`${BASE_URL}/api/v1/orders/${orderId}/status`, {
-        method: "PATCH",
+// Lấy chi tiết đơn hàng
+export async function getOrderDetails(orderId, pageNumber = 1, pageSize = 9999, token) {
+    const params = new URLSearchParams({
+        orderId,
+        pageNumber,
+        pageSize,
+    });
+
+    const res = await fetch(`${BASE_URL}/api/v1/orders/get-details?${params.toString()}`, {
+        method: "GET",
         headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status }),
     });
 
     return await res.json();
 }
 
-// Xóa đơn hàng
-export async function deleteOrder(orderId, token) {
-    const res = await fetch(`${BASE_URL}/api/v1/orders/${orderId}`, {
-        method: "DELETE",
+// Lấy danh sách đơn hàng của shop
+export async function getOrdersByShop({ pageNumber = 1, pageSize = 999, filter = "" }, token) {
+    const params = new URLSearchParams({
+        pageNumber,
+        pageSize,
+    });
+    if (filter) params.append("filter", filter);
+
+    const res = await fetch(`${BASE_URL}/api/v1/orders/get-by-shop?${params.toString()}`, {
+        method: "GET",
         headers: {
             Authorization: `Bearer ${token}`,
         },

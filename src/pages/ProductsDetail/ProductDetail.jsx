@@ -20,7 +20,7 @@ const ProductDetail = () => {
   const [newReview, setNewReview] = useState({ user: "", rating: 5, comment: "" })
   const [isLiked, setIsLiked] = useState(false)
   const [showToast, setShowToast] = useState(false)
-  const [showAddCartModal, setShowAddCartModal] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
   const [cartQuantity, setCartQuantity] = useState(1)
   const token = localStorage.getItem("token")
 
@@ -70,21 +70,40 @@ const ProductDetail = () => {
     setIsLiked(!isLiked)
   }
 
-  // Khi nhấn nút "Thêm Vào Giỏ"
-  const handleShowAddCartModal = () => {
-    setCartQuantity(1)
-    setShowAddCartModal(true)
-  }
-
-  // Khi xác nhận thêm vào giỏ
-  const handleConfirmAddToCart = async () => {
-    setShowAddCartModal(false)
-    if (!token) {
+  const handleAddToCart = async () => {
+    // Check if product is out of stock
+    if (product.stock === 0) {
+      setToastMessage("Sản phẩm đã hết hàng!")
       setShowToast(true)
       return
     }
-    const res = await addItemToCart({ productId: product.id, quantity: cartQuantity }, token)
-    if (res && res.statusCode === 200) {
+
+    // Check if quantity exceeds stock
+    if (cartQuantity > product.stock) {
+      setToastMessage(`Chỉ còn ${product.stock} sản phẩm trong kho!`)
+      setShowToast(true)
+      return
+    }
+
+    // Check if user is logged in
+    if (!token) {
+      setToastMessage("Vui lòng đăng nhập để thêm vào giỏ hàng!")
+      setShowToast(true)
+      return
+    }
+
+    try {
+      const res = await addItemToCart({ productId: product.id, quantity: cartQuantity }, token)
+      if (res && res.statusCode === 200) {
+        setToastMessage(`Đã thêm ${cartQuantity} sản phẩm vào giỏ hàng!`)
+        setShowToast(true)
+        setCartQuantity(1) // Reset quantity to 1 after adding
+      } else {
+        setToastMessage(res.message || "Thêm vào giỏ hàng thất bại!")
+        setShowToast(true)
+      }
+    } catch {
+      setToastMessage("Thêm vào giỏ hàng thất bại!")
       setShowToast(true)
     }
   }
@@ -157,11 +176,43 @@ const ProductDetail = () => {
                 <li>Chất liệu: {product.material}</li>
                 <li>Danh mục: {product.category}</li>
               </ul>
-              <div className="d-flex gap-3 mt-4">
+              {/* Quantity Control */}
+              <div className="quantity-control mb-4">
+                <span className="me-3 fw-bold">Số lượng:</span>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => setCartQuantity(prev => Math.max(1, prev - 1))}
+                  disabled={cartQuantity <= 1}
+                  className="quantity-btn"
+                >
+                  −
+                </Button>
+                <Form.Control
+                  type="number"
+                  min={1}
+                  max={product.stock || 100}
+                  value={cartQuantity}
+                  onChange={e => setCartQuantity(Math.max(1, Math.min(Number(e.target.value), product.stock || 100)))}
+                  className="quantity-input"
+                  aria-label="Số lượng sản phẩm"
+                />
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => setCartQuantity(prev => Math.min(prev + 1, product.stock || 100))}
+                  disabled={cartQuantity >= (product.stock || 100)}
+                  className="quantity-btn"
+                >
+                  +
+                </Button>
+              </div>
+              {/* Action Buttons */}
+              <div className="d-flex gap-3 mt-4 align-items-center">
                 <Button size="lg" className="btn-primary-custom">
                   Mua Ngay
                 </Button>
-                <Button size="lg" variant="outline-secondary" onClick={handleShowAddCartModal}>
+                <Button size="lg" variant="outline-secondary" onClick={handleAddToCart}>
                   Thêm Vào Giỏ
                 </Button>
                 <Button
@@ -273,40 +324,15 @@ const ProductDetail = () => {
           </Modal.Footer>
         </Modal>
 
-        {/* Modal chọn số lượng thêm vào giỏ */}
-        <Modal show={showAddCartModal} onHide={() => setShowAddCartModal(false)} centered>
-          <Modal.Header closeButton>
-            <Modal.Title>Chọn số lượng</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form>
-              <Form.Group>
-                <Form.Label>Số lượng</Form.Label>
-                <Form.Control
-                  type="number"
-                  min={1}
-                  max={product.stock || 100}
-                  value={cartQuantity}
-                  onChange={e => setCartQuantity(Math.max(1, Math.min(Number(e.target.value), product.stock || 100)))}
-                />
-              </Form.Group>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowAddCartModal(false)}>
-              Hủy
-            </Button>
-            <Button variant="primary" onClick={handleConfirmAddToCart}>
-              Xác nhận
-            </Button>
-          </Modal.Footer>
-        </Modal>
-
         <ToastContainer position="top-end" className="p-3">
-          <Toast onClose={() => setShowToast(false)} show={showToast} delay={2000} autohide bg="success">
-            <Toast.Body className="text-white">
-              {token ? "Đã thêm vào giỏ hàng!" : "Vui lòng đăng nhập để thêm vào giỏ hàng!"}
-            </Toast.Body>
+          <Toast
+            onClose={() => setShowToast(false)}
+            show={showToast}
+            delay={2000}
+            autohide
+            bg={toastMessage.includes("thất bại") || toastMessage.includes("đăng nhập") || toastMessage.includes("hết hàng") ? "danger" : "success"}
+          >
+            <Toast.Body className="text-white">{toastMessage}</Toast.Body>
           </Toast>
         </ToastContainer>
       </Container>

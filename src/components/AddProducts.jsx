@@ -1,11 +1,26 @@
 import { useState, useRef } from "react";
-import React from "react"; // Added explicit React import
+import React from "react";
 import { Modal, Button, Form, Spinner, Alert, Row, Col } from "react-bootstrap";
 import { uploadMultipleFiles } from "../api/upload";
 import { createProduct } from "../api/product";
 
-
 const BASE_API_URL = "https://hmstoresapi.eposh.io.vn/";
+
+// Predefined categories extracted from API data
+const CATEGORIES = [
+
+    "Đồ decor",
+    "Đồ gia dụng",
+    "Phụ kiện",
+    "Túi xách",
+    "Thời trang",
+    "Thời trang nam",
+    "Gia dụng",
+    "Balo - Túi xách",
+    "Thời trang nữ",
+    "Giày dép",
+    "Điện tử",
+];
 
 const AddProducts = ({ show, onHide, onCreated, token }) => {
     const [form, setForm] = useState({
@@ -16,7 +31,7 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
         stock: "",
         material: "",
         commonImage: "",
-        category: "",
+        category: "", // Initialize as empty for dropdown
         moreImage: [{ url: "" }],
     });
     const [errors, setErrors] = useState({});
@@ -32,6 +47,7 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
         if (!form.costPrice || form.costPrice <= 0) newErrors.costPrice = "Giá vốn phải lớn hơn 0";
         if (!form.price || form.price <= 0) newErrors.price = "Giá bán phải lớn hơn 0";
         if (!form.stock || form.stock < 0) newErrors.stock = "Số lượng không được âm";
+        if (!form.category) newErrors.category = "Vui lòng chọn danh mục";
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -56,6 +72,7 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
         if (name === "costPrice" && value > 0) delete newErrors.costPrice;
         if (name === "price" && value > 0) delete newErrors.price;
         if (name === "stock" && value >= 0) delete newErrors.stock;
+        if (name === "category" && value) delete newErrors.category;
         setErrors(newErrors);
     };
 
@@ -160,6 +177,7 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                 });
                 moreImageRefs.current = [React.createRef()];
                 commonImageRef.current.value = null;
+                setErrors({});
             } else {
                 setGeneralError(res.message || "Tạo sản phẩm thất bại");
             }
@@ -175,7 +193,11 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                 <Modal.Title id="add-product-modal">Thêm sản phẩm mới</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                {generalError && <Alert variant="danger" onClose={() => setGeneralError("")} dismissible>{generalError}</Alert>}
+                {generalError && (
+                    <Alert variant="danger" onClose={() => setGeneralError("")} dismissible>
+                        {generalError}
+                    </Alert>
+                )}
                 <Form onSubmit={handleSubmit} noValidate>
                     <Row>
                         <Col md={6}>
@@ -191,7 +213,9 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                                     placeholder="Nhập tên sản phẩm"
                                     aria-describedby="name-error"
                                 />
-                                <Form.Control.Feedback type="invalid" id="name-error">{errors.name}</Form.Control.Feedback>
+                                <Form.Control.Feedback type="invalid" id="name-error">
+                                    {errors.name}
+                                </Form.Control.Feedback>
                             </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Mô tả</Form.Label>
@@ -206,14 +230,26 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                                 />
                             </Form.Group>
                             <Form.Group className="mb-3">
-                                <Form.Label>Danh mục</Form.Label>
-                                <Form.Control
+                                <Form.Label>Danh mục <span className="text-danger">*</span></Form.Label>
+                                <Form.Select
                                     name="category"
                                     value={form.category}
                                     onChange={handleChange}
+                                    required
+                                    isInvalid={!!errors.category}
                                     size="sm"
-                                    placeholder="Nhập danh mục sản phẩm"
-                                />
+                                    aria-describedby="category-error"
+                                >
+                                    <option value="">Chọn danh mục</option>
+                                    {CATEGORIES.map((category, idx) => (
+                                        <option key={idx} value={category}>
+                                            {category}
+                                        </option>
+                                    ))}
+                                </Form.Select>
+                                <Form.Control.Feedback type="invalid" id="category-error">
+                                    {errors.category}
+                                </Form.Control.Feedback>
                             </Form.Group>
                         </Col>
                         <Col md={6}>
@@ -230,7 +266,9 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                                     placeholder="Nhập giá vốn"
                                     aria-describedby="costPrice-error"
                                 />
-                                <Form.Control.Feedback type="invalid" id="costPrice-error">{errors.costPrice}</Form.Control.Feedback>
+                                <Form.Control.Feedback type="invalid" id="costPrice-error">
+                                    {errors.costPrice}
+                                </Form.Control.Feedback>
                             </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Giá bán <span className="text-danger">*</span></Form.Label>
@@ -245,7 +283,9 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                                     placeholder="Nhập giá bán"
                                     aria-describedby="price-error"
                                 />
-                                <Form.Control.Feedback type="invalid" id="price-error">{errors.price}</Form.Control.Feedback>
+                                <Form.Control.Feedback type="invalid" id="price-error">
+                                    {errors.price}
+                                </Form.Control.Feedback>
                             </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Số lượng <span className="text-danger">*</span></Form.Label>
@@ -260,7 +300,9 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                                     placeholder="Nhập số lượng"
                                     aria-describedby="stock-error"
                                 />
-                                <Form.Control.Feedback type="invalid" id="stock-error">{errors.stock}</Form.Control.Feedback>
+                                <Form.Control.Feedback type="invalid" id="stock-error">
+                                    {errors.stock}
+                                </Form.Control.Feedback>
                             </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Chất liệu</Form.Label>
@@ -285,7 +327,9 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                             size="sm"
                             aria-describedby="commonImage-help"
                         />
-                        <Form.Text id="commonImage-help" muted>Chọn file ảnh (jpg, png, tối đa 5MB)</Form.Text>
+                        <Form.Text id="commonImage-help" muted>
+                            Chọn file ảnh (jpg, png, tối đa 5MB)
+                        </Form.Text>
                         {form.commonImage && (
                             <div className="mt-2 position-relative d-inline-block">
                                 <img
@@ -318,7 +362,9 @@ const AddProducts = ({ show, onHide, onCreated, token }) => {
                                     size="sm"
                                     aria-describedby={`moreImage-help-${idx}`}
                                 />
-                                <Form.Text id={`moreImage-help-${idx}`} muted className="ms-2">jpg, png, tối đa 5MB</Form.Text>
+                                <Form.Text id={`moreImage-help-${idx}`} muted className="ms-2">
+                                    jpg, png, tối đa 5MB
+                                </Form.Text>
                                 <Button
                                     variant="danger"
                                     size="sm"
